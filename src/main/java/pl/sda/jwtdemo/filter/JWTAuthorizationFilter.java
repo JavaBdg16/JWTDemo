@@ -2,6 +2,8 @@ package pl.sda.jwtdemo.filter;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
     public JWTAuthorizationFilter(AuthenticationManager authenticationManager) {
@@ -33,10 +36,25 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
         }
 
         String token = header.replace("Bearer ", "");
-        String username = JWT.require(Algorithm.HMAC256("alamakota"))
-                .build()
-                .verify(token)
-                .getSubject();
+
+        DecodedJWT decodedJWT = null;
+
+        try {
+            decodedJWT = JWT.require(Algorithm.HMAC256("alamakota"))
+                    .build()
+                    .verify(token);
+        } catch (JWTVerificationException ex) {
+            response.getWriter().write(ex.getLocalizedMessage());
+            response.getWriter().flush();
+            response.getWriter().close();
+
+            // TODO: why Access is denied?
+
+            chain.doFilter(request, response);
+            return;
+        }
+
+        String username = decodedJWT.getSubject();
 
         if (username != null) {
             UsernamePasswordAuthenticationToken user =
