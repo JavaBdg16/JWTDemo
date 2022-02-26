@@ -43,25 +43,19 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
             decodedJWT = JWT.require(Algorithm.HMAC256("alamakota"))
                     .build()
                     .verify(token);
-        } catch (JWTVerificationException ex) {
-            response.getWriter().write(ex.getLocalizedMessage());
-            response.getWriter().flush();
-            response.getWriter().close();
 
-            // TODO: why Access is denied?
+            String username = decodedJWT.getSubject();
+
+            if (username != null) {
+                UsernamePasswordAuthenticationToken user =
+                        new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
+                SecurityContextHolder.getContext().setAuthentication(user);
+            }
 
             chain.doFilter(request, response);
-            return;
+        } catch (JWTVerificationException ex) {
+            // TODO: return error message to client
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
         }
-
-        String username = decodedJWT.getSubject();
-
-        if (username != null) {
-            UsernamePasswordAuthenticationToken user =
-                    new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
-            SecurityContextHolder.getContext().setAuthentication(user);
-        }
-
-        chain.doFilter(request, response);
     }
 }
